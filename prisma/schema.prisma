@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  expenses          Expense[]
+  automaticExpenses AutomaticExpense[]
+}
+
+model Expense {
+  id                 String            @id @default(cuid())
+  userId             String
+  amount             Float
+  date               DateTime
+  category           String
+  note               String?
+  source             ExpenseSource
+  automaticExpenseId String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  automaticExpense AutomaticExpense? @relation(fields: [automaticExpenseId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([userId, category])
+}
+
+model AutomaticExpense {
+  id         String   @id @default(cuid())
+  userId     String
+  name       String
+  amount     Float
+  category   String
+  startMonth String   // YYYY-MM format
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses          Expense[]
+  skippedMonths     SkippedAutomaticExpense[]
+
+  @@index([userId, isActive])
+}
+
+model SkippedAutomaticExpense {
+  id                 String   @id @default(cuid())
+  automaticExpenseId String
+  yearMonth          String   // YYYY-MM format
+  createdAt          DateTime @default(now())
+
+  automaticExpense AutomaticExpense @relation(fields: [automaticExpenseId], references: [id], onDelete: Cascade)
+
+  @@unique([automaticExpenseId, yearMonth])
+  @@index([automaticExpenseId])
+}
+
+enum ExpenseSource {
+  manual
+  automatic
+}
+
+
+
